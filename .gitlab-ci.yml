@@ -4,11 +4,12 @@ stages:          # List of stages for jobs, and their order of execution
   - deploy
 
 build-job:       # This job runs in the build stage, which runs first.
+  image: golang:1.16-alpine
   stage: build
   script:
     - ls
     - echo "Compiling the code..."
-    - go build -o main
+    - go build -o main.go
     - echo "Compile complete."
 
 # unit-test-job:   # This job runs in the test stage.
