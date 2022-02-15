@@ -30,7 +30,7 @@ race-test-job: # This job runs in the test stage.
     - go build -o ./cmd/main ./cmd/main.go
     - echo "Compile complete."
     - apt-get update
-    - apt-get install build-essential
+    - apt-get install build-essential -y
     - go test -race ./cmd/main.go
 
 lint-test-job: # This job also runs in the test stage.
