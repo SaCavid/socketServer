@@ -10,7 +10,7 @@ build-job:       # This job runs in the build stage, which runs first.
     - ls
     - echo "Compiling the code..."
     - go mod download
-    - go build -o .\cmd\main .\cmd\main.go
+    - go build -o ./cmd/main ./cmd/main.go
     - echo "Compile complete."
 
 # unit-test-job:   # This job runs in the test stage.
