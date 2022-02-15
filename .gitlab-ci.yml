@@ -20,7 +20,7 @@ race-test-job: # This job runs in the test stage.
     - go mod download
     - go build -o ./cmd/main ./cmd/main.go
     - echo "Compile complete."
-    - apt-get install build-essential
+    - apk-get install build-essential
     - go test -race ./cmd/main.go
 
 lint-test-job: # This job also runs in the test stage.
