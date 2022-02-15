@@ -5,13 +5,12 @@ import (
 	"fmt"
 	"github.com/gorilla/websocket"
 	"log"
+	"net"
 	"net/http"
 	"time"
 )
 
 const (
-	// Time allowed to write a message to the peer.
-	writeWait = 10 * time.Second
 
 	// Time allowed to read the next pong message from the peer.
 	pongWait = 60 * time.Second
@@ -19,36 +18,39 @@ const (
 	// Send pings to peer with this period. Must be less than pongWait.
 	pingPeriod = (pongWait * 9) / 10
 
+	// Send pings to peer with this period. Must be less than pongWait.
+	informerPeriod = 5 * time.Second
+
 	// Maximum message size allowed from peer.
 	maxMessageSize = 512
 )
 
 // Client is a middleman between the websocket connection and the hub.
 type Client struct {
-	Id string // User unique id + remote address for unique connection
+	Id string // Client unique id: remote address for unique connection
 
 	hub *Hub
+
+	// channel to confirm registration
+	HubChan chan bool
 
 	// The websocket connection.
 	conn *websocket.Conn
 
+	TConn net.Conn
 	// Buffered channel of outbound messages.
-	send chan *Protocol
+	Send chan *Protocol
 }
 
 // readPump pumps messages from the websocket connection to the hub.
-
-// The application runs readPump in a per-connection goroutine. The application
-// ensures that there is at most one reader on a connection by executing all
-// reads from this goroutine.
 func (c *Client) readPump() {
 	defer func() {
-		c.hub.unregister <- c
-		c.conn.Close()
+		c.hub.unregisterAdmin <- c
+		_ = c.conn.Close()
 	}()
+
 	c.conn.SetReadLimit(maxMessageSize)
-	c.conn.SetReadDeadline(time.Now().Add(pongWait))
-	c.conn.SetPongHandler(func(string) error { c.conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
+
 	for {
 
 		msg := &Protocol{}
@@ -58,66 +60,76 @@ func (c *Client) readPump() {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				log.Printf("error: %v", err)
 			}
+			log.Println(err)
 			break
-		}
-		//message = bytes.TrimSpace(bytes.Replace(message, newline, space, -1))
-
-		err = msg.Validate()
-		if err != nil {
-			c.send <- &Protocol{
-				Type:           0,
-				ConversationId: "",
-				MessageId:      msg.MessageId,
-				Data: Message{
-					Text: err.Error(),
-				},
-			}
 		} else {
-			c.hub.broadcast <- msg
+
+			err = msg.Validate()
+			if err != nil {
+				log.Println(err)
+				c.Send <- &Protocol{
+					Error:   true,
+					ErrCode: 0,
+					Msg:     err.Error(),
+				}
+			} else {
+				msg.AdminChan = c.Send
+				c.hub.broadcast <- msg
+			}
 		}
+
 	}
 }
 
 // writePump pumps messages from the hub to the websocket connection.
-//
-// A goroutine running writePump is started for each connection. The
-// application ensures that there is at most one writer to a connection by
-// executing all writes from this goroutine.
 func (c *Client) writePump() {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
 		ticker.Stop()
-		c.conn.Close()
+		_ = c.conn.Close()
 	}()
 
 	for {
 		select {
-		case message, ok := <-c.send:
-			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+		case message, ok := <-c.Send:
 			if !ok {
 				// The hub closed the channel.
-				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+				log.Println("Closed channel:")
+				_ = c.conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
 
 			w, err := c.conn.NextWriter(websocket.TextMessage)
 			if err != nil {
+				log.Println(err)
 				return
 			}
 
-			text, err := json.Marshal(message)
+			text, err := json.Marshal(&struct {
+				To      string
+				Command string
+
+				Error   bool
+				ErrCode uint32
+				Msg     string
+			}{
+				To:      message.To,
+				Command: message.Command,
+				Error:   message.Error,
+				ErrCode: message.ErrCode,
+				Msg:     message.Msg,
+			})
 
 			if err != nil {
+				log.Println(err)
 				return
 			}
 
-			w.Write(text)
-
+			_, _ = w.Write(text)
 			if err := w.Close(); err != nil {
 				return
 			}
 		case <-ticker.C:
-			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				return
 			}
@@ -127,6 +139,7 @@ func (c *Client) writePump() {
 
 func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 
+	log.Println("Attempt to join websocket server")
 	pool := pool{
 		w:  w,
 		r:  r,
@@ -159,14 +172,13 @@ func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		Id:   fmt.Sprintf("%s", conn.RemoteAddr().String()),
 		hub:  hub,
 		conn: conn,
-		send: make(chan *Protocol, 10),
+		Send: make(chan *Protocol, 10),
 	}
 
-	data, _ := json.Marshal(client)
+	log.Println("Admin user registered with ID:", conn.RemoteAddr().String())
+	log.Println("Admin user registered with ID:", conn.RemoteAddr().Network())
 
-	log.Println(data)
-
-	client.hub.register <- client
+	client.hub.registerAdmin <- client
 
 	go client.writePump()
 	go client.readPump()

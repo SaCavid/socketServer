@@ -1,19 +1,58 @@
 package service
 
 import (
-	"encoding/json"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"socketserver/models"
 	ws "socketserver/websocket"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
 
-func (srv *Server) TcpServer(addr string) {
+var (
+	defaultBuffer = 0
+)
 
-	l, err := net.Listen("tcp", ":"+addr)
+type Server struct {
+	Port            int
+	Mu              sync.Mutex
+	DefaultDeadline time.Duration
+	Hub             *ws.Hub
+}
+
+type User struct {
+	Name    string
+	Channel chan models.Message
+}
+
+// TcpServers - read environment and continue
+func (srv *Server) TcpServers() {
+
+	tcpHost := os.Getenv("TCP_HOST_NAME")
+	addr := os.Getenv("TCP_PORT")
+	defaultSize := os.Getenv("DEFAULT_BUFFER")
+
+	n, err := strconv.ParseInt(defaultSize, 10, 64)
+	if err != nil {
+		n = 100
+	}
+	defaultBuffer = int(n)
+
+	ports := strings.Split(addr, ",")
+
+	for _, v := range ports {
+		go srv.TcpServer(tcpHost, v)
+	}
+}
+
+// TcpServer - Will start tcp server per port from environment
+func (srv *Server) TcpServer(tcpHost, addr string) {
+	l, err := net.Listen("tcp", fmt.Sprintf("%s:%s", tcpHost, addr))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -24,7 +63,7 @@ func (srv *Server) TcpServer(addr string) {
 			log.Fatal(err)
 		}
 	}()
-	log.Println("started server on " + addr)
+	log.Println("Started TCP server on " + addr)
 
 	for {
 		conn, err := l.Accept()
@@ -32,128 +71,106 @@ func (srv *Server) TcpServer(addr string) {
 			log.Fatal(err)
 		}
 
-		err = conn.SetReadDeadline(time.Now().Add(time.Second * 120))
-		if err != nil {
-			log.Println(err)
-			return
-		}
-
 		go srv.Receiver(conn)
 	}
 }
 
-type Server struct {
-	Port               int
-	Mu                 sync.Mutex
-	LoginChan          chan *User
-	LogoutChan         chan string
-	Clients            map[string]chan models.Message
-	ReceiverRoutine    uint64
-	TransmitterRoutine uint64
-	SendMessages       uint64
-	ReceivedMessages   uint64
-	DefaultDeadline    time.Duration
-	Hub                *ws.Hub
-}
-
-type User struct {
-	Name    string
-	Channel chan models.Message
-}
-
+// Receiver - Tcp connection reader
 func (srv *Server) Receiver(conn net.Conn) {
 
 	logged := false
+	quit := make(chan bool, 1)
+	b := make([]byte, defaultBuffer)
+
 	// var user string
-
-	c := make(chan models.Message, 8)
-	srv.ReceiverRoutine++
+	client := &ws.Client{}
 	defer func() {
-
-		_ = conn.Close()
-
-		srv.ReceiverRoutine--
+		//		log.Println("TCP connection finished")
+		quit <- true
 	}()
 
-	go srv.Transmitter(conn, c)
+	for {
+		n, err := conn.Read(b)
+		if err != nil {
+			if err.Error() == "EOF" {
+				log.Println("Connection interrupted by client machine")
+			} else {
+				// log.Println(err)
+			}
+			srv.Hub.Unregister <- client
+			break
+		} else {
+			b = b[:n]
+			if logged {
+				// doing nothing if machine logged and sending message
+			} else {
+				msg := string(b)
+				login := strings.Split(msg, ".")
+
+				if len(login) != 2 {
+					log.Println("Wrong login msg format")
+					break
+				}
+
+				// FIXME - check worker name is correct ?
+
+				// FIXME - check access token is correct ?
+				client = &ws.Client{
+					Id:      fmt.Sprintf("%s", login[1]),
+					Send:    make(chan *ws.Protocol, 10),
+					TConn:   conn,
+					HubChan: make(chan bool, 1),
+				}
+
+				go srv.Transmitter(conn, client.Send, quit)
+				srv.Hub.Register <- client
+
+				confirm := <-client.HubChan
+
+				if confirm {
+					logged = true
+					// channel for quitting transmitter goroutine
+					//					log.Println("New machine logged:", login[0], " with access key and ID:", login[1])
+					close(client.HubChan)
+				} else {
+					//					log.Println("Error while registering. Closing TCP connection")
+					close(client.HubChan)
+					break
+				}
+			}
+		}
+	}
+}
+
+// Transmitter - Tcp connection writer
+func (srv *Server) Transmitter(conn net.Conn, c chan *ws.Protocol, quit chan bool) {
 
 	for {
-		m := models.Message{}
-		d := json.NewDecoder(conn)
+		select {
+		case msg := <-c:
 
-		err := d.Decode(&m)
-		if err != nil {
-			log.Println(err)
-			return
-		}
-
-		err = m.ValidateMessage()
-		if err != nil {
-			log.Println(err)
-			continue
-		}
-
-		if !logged {
-			logged = true
-			// user = m.From
-			//srv.Login(user, c)
-		} else {
-			srv.Mu.Lock()
-
-			receiver := srv.Clients[m.To]
-			srv.ReceivedMessages++
-			srv.Mu.Unlock()
-
-			if receiver != nil {
-				receiver <- m
-			}
-
-			err = conn.SetReadDeadline(time.Now().Add(srv.DefaultDeadline))
+			_, err := conn.Write([]byte(fmt.Sprintf("%s\n", msg.Command)))
 			if err != nil {
 				log.Println(err)
+				return
+			}
+
+			err = conn.SetDeadline(time.Now().Add(srv.DefaultDeadline))
+			if err != nil {
+				log.Println(err)
+			}
+		case b := <-quit:
+			if b {
+				close(quit)
+				close(c)
+				_ = conn.Close()
 				return
 			}
 		}
 	}
 }
 
-func (srv *Server) Transmitter(conn net.Conn, c chan models.Message) {
-
-	srv.TransmitterRoutine++
-	defer func() {
-		close(c)
-		srv.TransmitterRoutine--
-		_ = conn.Close()
-	}()
-
-	for {
-		y := <-c
-
-		if y.Status {
-			return
-		}
-
-		srv.Mu.Lock()
-		srv.SendMessages++
-		srv.Mu.Unlock()
-		d, err := json.Marshal(y)
-		if err != nil {
-			log.Println(err)
-			continue
-		}
-		_, err = conn.Write(d)
-		if err != nil {
-			log.Println(err)
-			return
-		}
-
-		err = conn.SetDeadline(time.Now().Add(srv.DefaultDeadline))
-		if err != nil {
-			log.Println(err)
-		}
-	}
-}
-
+// Ws - Websocket endpoint
 func (srv *Server) Ws(w http.ResponseWriter, r *http.Request) {
 	ws.ServeWs(srv.Hub, w, r)
 }

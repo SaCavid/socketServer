@@ -1,10 +1,255 @@
-<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <title>Test app</title>
+    <link crossorigin="anonymous" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+          integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" rel="stylesheet">
+    <link crossorigin="anonymous" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"
+          integrity="sha384-wvfXpqpZZVQGK6TAh5PVlGOfQNHSoD2xbE+QkPxCAFlNEevoEH3Sl0sibVcOQVnN"
+          rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/css/toastr.min.css" rel="stylesheet">
+    <style>
+        .terminal {
+            background-color: black;
+            color: aliceblue;
+            height: 400px;
+            font-size: small;
+            overflow-y: scroll;
+            overflow-x: hidden;
+        }
+
+        .terminalApp {
+            display: none;
+        }
+    </style>
 </head>
 <body>
-asdasd
+
+<div class="container">
+
+    <div class="card mt-3">
+        <div class="card-header">
+            <h5>Terminal app</h5>
+            <small>Add first user manually to start</small>
+        </div>
+    </div>
+
+    <div class="row mt-3 login">
+        <div class="col-md-4">
+            <div class="form-group">
+                <label for="admin">Login </label>
+                <input aria-describedby="adminHelp" class="form-control" id="admin" placeholder="Enter Username"
+                       type="text" value="AdminUser">
+                <small class="form-text text-muted" id="adminHelp">Simple information for
+                    identification.</small>
+            </div>
+            <button class="btn btn-primary" onclick="WebSocketTest()" type="submit">Connect to websocket
+            </button>
+        </div>
+    </div>
+
+    <div class="card mt-3 terminalApp">
+        <div class="col-12">
+            <form class="form-inline mt-3">
+                <div class="form-group mb-2">
+                    <label class="sr-only" for="machine">Machine ID</label>
+                    <input class="form-control" id="machine" placeholder="Machine ID" type="text">
+                </div>
+                <div class="col-6 form-group mx-sm-3 mb-2">
+                    <label class="sr-only" for="command">Command</label>
+                    <input class="col-12 form-control" id="command" placeholder="Command" type="text">
+                </div>
+                <button class="btn btn-primary mb-2" onclick="sendCommand()" type="button">Send Command</button>
+                <div class="form-check form-check-inline mx-sm-3 mb-2">
+                    <input class="form-check-input" id="scroll" onclick="scrollToEnd()" type="checkbox">
+                    <label class="form-check-label" for="scroll">Scroll to end</label>
+                </div>
+            </form>
+        </div>
+        <div class="terminal" id="terminal">
+
+        </div>
+    </div>
+</div>
+
+<script crossorigin="anonymous"
+        integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4="
+        src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script crossorigin="anonymous"
+        integrity="sha384-B4gt1jrGC7Jh4AgTPSdUtOBvfO8shuf57BaghqFfPlYxofvL8/KUEfYiJOMMV+rV"
+        src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/js/toastr.min.js"></script>
+<script>
+
+    let Ws;
+
+    function WebSocketTest() {
+
+        if ("WebSocket" in window) {
+            console.log("WebSocket is supported by your Browser!");
+
+            // Let us open a web socket
+            let ws = new WebSocket("ws://localhost:8080/ws");
+            Ws = ws;
+            ws.onopen = function () {
+
+                let adminName = $("#admin").val()
+
+                if (adminName === "") {
+                    Notification("error", "Username cant be null. Please fill username input!")
+                    ws.close()
+                    return
+                }
+
+                // for simple login process
+                let loginMessage = {
+                    "From": adminName,
+                }
+
+                $(".login").hide();
+                $(".terminalApp").show();
+
+                // Web Socket is connected, send data using send()
+                Notification("success", "Connected to websocket")
+                let openingMessage = JSON.stringify(loginMessage)
+                //ws.send(openingMessage)
+            };
+            ``
+            ws.onmessage = function (e) {
+                if (e.data.length > 2) {
+                    let message = JSON.parse(e.data)
+                    console.log(message)
+                    if (message.Error) {
+                        log("error", message.Msg)
+                    } else {
+                        if (message.ErrCode === 1) {
+                            log("info", message.Msg)
+                        } else {
+                            log("success", message.Msg)
+                        }
+                    }
+                }
+            };
+
+            ws.onclose = function () {
+
+                Notification("warning", "Websocket disconnected")
+                $(".login").show()
+                $(".terminalApp").hide()
+            };
+
+            ws.onerror = function () {
+                Notification("error", "Websocket error: Disconnected")
+            };
+
+        } else {
+
+            // The browser doesn't support WebSocket
+            alert("WebSocket NOT supported by your Browser!");
+        }
+    }
+
+    function Notification(s, msg) {
+        toastr[s](msg)
+
+        toastr.options = {
+            "closeButton": false,
+            "debug": false,
+            "newestOnTop": true,
+            "progressBar": true,
+            "positionClass": "toast-top-right",
+            "preventDuplicates": true,
+            "onclick": null,
+            "showDuration": "300",
+            "hideDuration": "1000",
+            "timeOut": "5000",
+            "extendedTimeOut": "1000",
+            "showEasing": "swing",
+            "hideEasing": "linear",
+            "showMethod": "fadeIn",
+            "hideMethod": "fadeOut"
+        }
+    }
+
+    function sendCommand() {
+
+        let machineID = $("#machine").val()
+
+        if (machineID === "") {
+
+            Notification("error", "Machine ID cant be null. Please fill Machine ID input!")
+            return
+        }
+
+        let command = $("#command").val()
+
+        if (command === "") {
+
+            Notification("error", "Command cant be null. Please fill Command input!")
+            return
+        }
+
+        let payload = {
+            "To": machineID,
+            "Command": command
+        }
+
+        payload = JSON.stringify(payload)
+        Ws.send(payload)
+        let adminName = $("#admin").val()
+        log("warning", "Admin: " + adminName + " , sent Command: " + command + " to  Machine ID: " + machineID + " sent to server. ")
+    }
+
+    function log(status, msg) {
+        let currentDate = new Date();
+        let sec = currentDate.getSeconds()
+        if (sec < 10) {
+            sec = "0" + sec
+        }
+        let datetime = currentDate.getDate() + "/"
+            + (currentDate.getMonth() + 1) + "/"
+            + currentDate.getFullYear() + " @ "
+            + currentDate.getHours() + ":"
+            + currentDate.getMinutes() + ":"
+            + sec;
+        let c = ""
+        switch (status) {
+            case "success":
+                c = "text-success"
+                break
+            case "error":
+                c = "text-danger"
+                break
+            case "warning":
+                c = "text-warning"
+                break
+            case "info":
+                c = "text-info"
+                break
+        }
+        let l = ` <div class="row col-12 m-1">
+                <div>
+                    <span > ` + datetime + ` </span>
+                    <span class="ml-1 mr-1 ` + c + ` font-weight-bold"> ` + capitalizeFirstLetter(status) + ` </span> ` + capitalizeFirstLetter(msg) + ` </div>
+            </div>`
+
+        let s = $("#scroll")[0].checked;
+
+        $(".terminal").append(l)
+
+        if (s) {
+            scrollToEnd()
+        }
+    }
+
+    function scrollToEnd() {
+        let objDiv = document.getElementById("terminal");
+        objDiv.scrollTop = objDiv.scrollHeight;
+    }
+
+    function capitalizeFirstLetter(string) {
+        return string.charAt(0).toUpperCase() + string.slice(1);
+    }
+</script>
 </body>
 </html>
