@@ -13,14 +13,14 @@ build-job:       # This job runs in the build stage, which runs first.
     - echo "Compile complete."
 
 race-test-job: # This job runs in the test stage.
-  image: golang:1.16-alpine
+  image: golang
   stage: test
   script:
     - echo "Compiling the code..."
     - go mod download
     - go build -o ./cmd/main ./cmd/main.go
     - echo "Compile complete."
-    - apk-get install build-essential
+    - apt-get install build-essential
     - go test -race ./cmd/main.go
 
 lint-test-job: # This job also runs in the test stage.
