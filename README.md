@@ -46,6 +46,17 @@ For better understanding of inapp functionality check https://draw.io files in d
 
 ## Usage
 
+For profiling memory usage use command below then add png and confirm. It will generate heap profile. This should be
+done periodically for improving and finding memory leaks.
+
+```
+go tool pprof http://localhost:8080/debug/pprof/heap
+png or svg 
+
+```
+
+![terminal example](docs/profile001.png)
+
 ## Recommended
 
     - Add Authorization to websocket connection

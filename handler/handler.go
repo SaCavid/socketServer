@@ -6,6 +6,13 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+
+	// profiler
+	_ "net/http/pprof"
+
+	// import png library for profiler
+	// _ "image/png"
+
 	"os"
 	"socketserver/service"
 	"socketserver/websocket"
@@ -49,6 +56,12 @@ func Listen() {
 
 	r.HandleFunc("/", Index).Methods("GET")
 	r.HandleFunc("/ws", srv.Ws)
+	r.PathPrefix("/debug/").Handler(http.DefaultServeMux)
+	//r.Handle("/debug/pprof/", http.HandlerFunc(pprof.Index))
+	//r.Handle("/debug/pprof/cmdline", http.HandlerFunc(pprof.Cmdline))
+	//r.Handle("/debug/pprof/profile", http.HandlerFunc(pprof.Profile))
+	//r.Handle("/debug/pprof/symbol", http.HandlerFunc(pprof.Symbol))
+	//r.Handle("/debug/pprof/trace", http.HandlerFunc(pprof.Trace))
 
 	server := &http.Server{
 		Addr:         fmt.Sprintf("%s:%s", host, httpPort),

@@ -98,7 +98,7 @@ func (h *Hub) Run() {
 		bc = 256
 	}
 
-	for i := bc; i >= 0; i-- {
+	for i := bc; i >= 1; i-- {
 		go h.Broadcast()
 	}
 
