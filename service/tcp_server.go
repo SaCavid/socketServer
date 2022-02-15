@@ -18,8 +18,8 @@ type Server struct {
 	Hub  *ws.Hub
 }
 
-// TcpServers - read environment and continue
-func (srv *Server) TcpServers() {
+// TCPServers - read environment and continue
+func (srv *Server) TCPServers() {
 
 	tcpHost := os.Getenv("TCP_HOST_NAME")
 	addr := os.Getenv("TCP_PORT")
@@ -27,12 +27,12 @@ func (srv *Server) TcpServers() {
 	ports := strings.Split(addr, ",")
 
 	for _, v := range ports {
-		go srv.TcpServer(tcpHost, v)
+		go srv.TCPServer(tcpHost, v)
 	}
 }
 
-// TcpServer - Will start tcp server per port from environment
-func (srv *Server) TcpServer(tcpHost, addr string) {
+// TCPServer - Will start tcp server per port from environment
+func (srv *Server) TCPServer(tcpHost, addr string) {
 	l, err := net.Listen("tcp", fmt.Sprintf("%s:%s", tcpHost, addr))
 	if err != nil {
 		log.Fatal(err)

@@ -32,6 +32,7 @@ type pool struct {
 	Ch chan *websocket.Conn
 }
 
+// Hub main model for registration control
 type Hub struct {
 	pool chan pool
 
@@ -60,6 +61,7 @@ type Hub struct {
 	Unregister chan *Client
 }
 
+// NewHub creates new object from type
 func NewHub() *Hub {
 
 	workers := os.Getenv("TCP_HUB_WORKERS")
@@ -87,6 +89,7 @@ func NewHub() *Hub {
 	}
 }
 
+// Run Start HUB
 func (h *Hub) Run() {
 
 	broadcaster := os.Getenv("BROADCAST_WORKERS")
@@ -106,44 +109,44 @@ func (h *Hub) Run() {
 		case client := <-h.Register:
 			// log.Println("Register new machine client in HUB")
 			h.rw.Lock()
-			_, ok := h.machines[client.Id]
+			_, ok := h.machines[client.ID]
 			if ok {
-				//	log.Println(fmt.Sprintf("Machine with id: %s already exists", client.Id))
+				//	log.Println(fmt.Sprintf("Machine with id: %s already exists", client.ID))
 				client.HubChan <- false
 			} else {
-				h.machines[client.Id] = client
+				h.machines[client.ID] = client
 				client.HubChan <- true
 			}
 			h.rw.Unlock()
 		case client := <-h.Unregister:
 			h.rw.RLock()
-			_, ok := h.machines[client.Id]
+			_, ok := h.machines[client.ID]
 			h.rw.RUnlock()
 			if ok {
 				//				log.Println("Unregister machine client")
 				h.rw.Lock()
-				delete(h.machines, client.Id)
+				delete(h.machines, client.ID)
 				h.rw.Unlock()
 			}
 		case client := <-h.registerAdmin:
 			log.Println("Register new Admin client")
 			h.rw.Lock()
-			_, ok := h.users[client.Id]
+			_, ok := h.users[client.ID]
 			if ok {
 				client.HubChan <- false
 			} else {
-				h.users[client.Id] = client
+				h.users[client.ID] = client
 				client.HubChan <- true
 			}
 			h.rw.Unlock()
 		case client := <-h.unregisterAdmin:
 			log.Println("Unregister Admin client")
 			h.rw.RLock()
-			_, ok := h.users[client.Id]
+			_, ok := h.users[client.ID]
 			h.rw.RUnlock()
 			if ok {
 				h.rw.Lock()
-				delete(h.users, client.Id)
+				delete(h.users, client.ID)
 				h.rw.Unlock()
 				close(client.Send)
 			}
@@ -151,6 +154,7 @@ func (h *Hub) Run() {
 	}
 }
 
+// Broadcast Message brokers
 func (h *Hub) Broadcast() {
 	// broadcasts message between connected clients (users --> machines)
 	for {
@@ -174,6 +178,7 @@ func (h *Hub) Broadcast() {
 	}
 }
 
+// Informer Total count message broker
 func (h *Hub) Informer() {
 
 	informPeriod, err := strconv.ParseInt(os.Getenv("INFORM_PERIOD"), 10, 64)
@@ -222,6 +227,7 @@ func (h *Hub) Informer() {
 	}
 }
 
+// Pool For controlling memory overhead while multiple websocket connection
 func (h *Hub) Pool() {
 
 	workers := os.Getenv("TCP_HUB_WORKERS")

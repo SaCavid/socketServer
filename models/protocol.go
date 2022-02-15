@@ -4,6 +4,7 @@ import (
 	"fmt"
 )
 
+// Protocol main model for communication between modules
 type Protocol struct {
 	To      string
 	Command string
@@ -14,6 +15,7 @@ type Protocol struct {
 	AdminChan chan *Protocol
 }
 
+// Response simplified model for websocket responses
 type Response struct {
 	To      string
 	Command string
@@ -23,6 +25,7 @@ type Response struct {
 	Msg     string
 }
 
+// Validate checks protocol for valid information
 func (p *Protocol) Validate() error {
 
 	if p.To == "" {

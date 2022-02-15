@@ -73,7 +73,7 @@ func (srv *Server) Receiver(conn net.Conn) {
 
 				// create machine client
 				machine = &ws.Client{
-					Id:      fmt.Sprintf("%s", login[1]),
+					ID:      fmt.Sprintf("%s", login[1]),
 					Send:    send,
 					TConn:   conn,
 					HubChan: make(chan bool, 1),

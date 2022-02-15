@@ -12,6 +12,7 @@ import (
 	"time"
 )
 
+// DisplayTitle for fun
 func DisplayTitle() {
 
 	// https://patorjk.com/software/taag/#p=display&f=Graffiti&t=Type%20Something%20
@@ -28,6 +29,7 @@ ___________                        _________                      __  .__    .__
 	`)
 }
 
+// Listen start listening services: WebSocket Server, TCP Server
 func Listen() {
 
 	host := os.Getenv("WEB_SOCKET_HOST_NAME")
@@ -36,7 +38,7 @@ func Listen() {
 
 	srv := &service.Server{}
 
-	go srv.TcpServers()
+	go srv.TCPServers()
 
 	hub := websocket.NewHub()
 	go hub.Pool()

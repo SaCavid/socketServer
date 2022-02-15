@@ -46,7 +46,7 @@ func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 
 	// after upgrade create client unit for inmemory database registration (HUB)
 	client := &Client{
-		Id:      fmt.Sprintf("%s", conn.RemoteAddr().String()),
+		ID:      fmt.Sprintf("%s", conn.RemoteAddr().String()),
 		hub:     hub,
 		conn:    conn,
 		Send:    make(chan *models.Protocol, 10),

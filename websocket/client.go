@@ -8,7 +8,7 @@ import (
 
 // Client is a middleman between the websocket connection and the hub.
 type Client struct {
-	Id string // Client unique id: remote address for unique connection
+	ID string // Client unique id: remote address for unique connection
 
 	hub *Hub
 
