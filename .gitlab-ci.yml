@@ -13,7 +13,7 @@ invalid_ref: # This job runs in validate stage, which runs first.
     - echo "Invalid ref name - $CI_COMMIT_REF_NAME"
     - exit 1
   rules:
-    - if: $CI_COMMIT_REF_NAME !~ /^release|development|master|new\/.+|fix\/.+|doc\/.+|infra\/.+|qa\/.+$/
+    - if: $CI_COMMIT_REF_NAME !~ /^release|development|master|main|new\/.+|fix\/.+|doc\/.+|infra\/.+|qa\/.+$/
       when: always
 
 build-job: # This job runs in the build stage, which runs first.
