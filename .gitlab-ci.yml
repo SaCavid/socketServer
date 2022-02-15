@@ -9,8 +9,7 @@ build-job:       # This job runs in the build stage, which runs first.
   script:
     - ls
     - echo "Compiling the code..."
-    - go mod init
-    - go mod tidy
+    - go mod download
     - go build -o .\cmd\main .\cmd\main.go
     - echo "Compile complete."
 
