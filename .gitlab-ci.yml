@@ -2,9 +2,6 @@ stages: # List of stages for jobs, and their order of execution
   - build
   - test
   - deploy
-variables:
-  DOCKER_TEST_IMAGE_NAME: $CI_REGISTRY/$CI_PROJECT_PATH/buildenv:$CI_COMMIT_REF_SLUG
-  BUILD_PATH: /appbuild
 
 before_script:
   - VERSION=$(cat version)
@@ -17,8 +14,6 @@ build-job: # This job runs in the build stage, which runs first.
     - go mod download
     - go build -o ./cmd/main ./cmd/main.go
     - echo "Compile complete."
-    - echo $DOCKER_TEST_IMAGE_NAME
-    - echo $BUILD_PATH
     - echo $VERSION
 
 simple-test-job: # This job runs in the test stage.
