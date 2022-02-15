@@ -27,11 +27,10 @@ race-test-job: # This job runs in the test stage.
   script:
     - echo "Compiling the code..."
     - go mod download
-    - go build -o ./cmd/main ./cmd/main.go
-    - echo "Compile complete."
     - apt-get update
     - apt-get install build-essential -y
-    - go test -race ./cmd/main.go
+    - echo "Installed GCC."
+    - go build -race -o ./cmd/main ./cmd/main.go
 
 lint-test-job: # This job also runs in the test stage.
   image: golang:1.16-alpine
