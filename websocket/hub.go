@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"runtime"
+	"socketserver/models"
 	"strconv"
 	"sync"
 	"time"
@@ -14,6 +15,7 @@ import (
 
 var (
 	upgrader = websocket.Upgrader{
+		// default buffers
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
 		// Resolve cross-domain problems
@@ -22,42 +24,7 @@ var (
 			return true
 		},
 	}
-	workers     = os.Getenv("")
-	broadcaster = os.Getenv("")
 )
-
-type Protocol struct {
-	To      string
-	Command string
-
-	Error     bool
-	ErrCode   uint32
-	Msg       string
-	AdminChan chan *Protocol
-}
-
-type Message struct {
-	From  string
-	To    string
-	Reply string
-
-	Text   string
-	Images []string
-	File   string
-}
-
-func (p *Protocol) Validate() error {
-
-	if p.To == "" {
-		return fmt.Errorf("machine id cant be null")
-	}
-
-	if len(p.Command) == 0 || len(p.Command) > 30 {
-		return fmt.Errorf("wrong command format")
-	}
-
-	return nil
-}
 
 type pool struct {
 	w  http.ResponseWriter
@@ -78,7 +45,7 @@ type Hub struct {
 	machines map[string]*Client
 
 	// Inbound messages from the machines.
-	broadcast chan *Protocol
+	broadcast chan *models.Protocol
 
 	// Register requests from the machines.
 	registerAdmin chan *Client
@@ -95,6 +62,8 @@ type Hub struct {
 
 func NewHub() *Hub {
 
+	workers := os.Getenv("TCP_HUB_WORKERS")
+	broadcaster := os.Getenv("BROADCAST_WORKERS")
 	bc, err := strconv.ParseInt(broadcaster, 10, 64)
 	if err != nil {
 		bc = 256
@@ -102,11 +71,12 @@ func NewHub() *Hub {
 
 	wr, err := strconv.ParseInt(workers, 10, 64)
 	if err != nil {
+		log.Println(err)
 		wr = 128
 	}
 
 	return &Hub{
-		broadcast:       make(chan *Protocol, bc),
+		broadcast:       make(chan *models.Protocol, bc),
 		users:           make(map[string]*Client),
 		registerAdmin:   make(chan *Client),
 		unregisterAdmin: make(chan *Client),
@@ -119,6 +89,7 @@ func NewHub() *Hub {
 
 func (h *Hub) Run() {
 
+	broadcaster := os.Getenv("BROADCAST_WORKERS")
 	bc, err := strconv.ParseInt(broadcaster, 10, 64)
 	if err != nil {
 		bc = 256
@@ -133,7 +104,7 @@ func (h *Hub) Run() {
 	for {
 		select {
 		case client := <-h.Register:
-			//			log.Println("Register new machine client in HUB")
+			// log.Println("Register new machine client in HUB")
 			h.rw.Lock()
 			_, ok := h.machines[client.Id]
 			if ok {
@@ -157,7 +128,13 @@ func (h *Hub) Run() {
 		case client := <-h.registerAdmin:
 			log.Println("Register new Admin client")
 			h.rw.Lock()
-			h.users[client.Id] = client
+			_, ok := h.users[client.Id]
+			if ok {
+				client.HubChan <- false
+			} else {
+				h.users[client.Id] = client
+				client.HubChan <- true
+			}
 			h.rw.Unlock()
 		case client := <-h.unregisterAdmin:
 			log.Println("Unregister Admin client")
@@ -198,6 +175,15 @@ func (h *Hub) Broadcast() {
 }
 
 func (h *Hub) Informer() {
+
+	informPeriod, err := strconv.ParseInt(os.Getenv("INFORM_PERIOD"), 10, 64)
+	if err != nil {
+		informPeriod = 60
+	}
+
+	// Send total info to all online admin users every .
+	informerPeriod := time.Duration(informPeriod) * time.Second
+
 	ticker := time.NewTicker(informerPeriod)
 	defer func() {
 		ticker.Stop()
@@ -238,6 +224,7 @@ func (h *Hub) Informer() {
 
 func (h *Hub) Pool() {
 
+	workers := os.Getenv("TCP_HUB_WORKERS")
 	wr, err := strconv.ParseInt(workers, 10, 64)
 	if err != nil {
 		wr = 128
@@ -268,7 +255,6 @@ func (h *Hub) worker() {
 			}
 
 			pool.Ch <- conn
-
 		}
 	}
 }
