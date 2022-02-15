@@ -21,6 +21,18 @@ build-job: # This job runs in the build stage, which runs first.
     - echo $BUILD_PATH
     - echo $VERSION
 
+simple-test-job: # This job runs in the test stage.
+  image: golang
+  stage: test
+  script:
+    - echo "Compiling the code..."
+    - go mod download
+    - go get golang.org/x/tools/cmd/cover
+    - apt-get update
+    - apt-get install build-essential -y
+    - echo "Installed GCC."
+    - go test -cover ./...
+
 race-test-job: # This job runs in the test stage.
   image: golang
   stage: test
@@ -43,7 +55,6 @@ lint-test-job: # This job also runs in the test stage.
     - go get -u golang.org/x/lint/golint
     - chmod +x $GOPATH/bin/golint
     - golint -set_exit_status ./...
-
 
 # deploy-job:      # This job runs in the deploy stage.
 #   stage: deploy  # It only runs when *both* jobs in the test stage complete successfully.
