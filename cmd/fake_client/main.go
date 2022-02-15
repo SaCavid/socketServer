@@ -55,7 +55,7 @@ func main() {
 		time.Sleep(100 * time.Microsecond)
 		go tcpClient(tcpHost, addrs[h], num)
 		h++
-		if h > 9 {
+		if h > len(addrs)-1 {
 			h = 0
 		}
 		i++
