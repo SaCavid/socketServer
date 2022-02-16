@@ -17,7 +17,7 @@ cd project_folder
 git clone https://gitlab.com/sadiqov.cavid/socketserver.git
 git branch -M main
  
-go build -o main.go
+go build -o main ./cmd/main.go
 ./main 
  
 ```
