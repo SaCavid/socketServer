@@ -49,6 +49,9 @@ For better understanding of inapp functionality check https://draw.io files in d
 For profiling memory usage use command below then add png and confirm. It will generate heap profile. This should be
 done periodically for improving and finding memory leaks.
 
+Url for online reporting.
+http://localhost:8080/debug/pprof/
+
 ```
 go tool pprof http://localhost:8080/debug/pprof/heap
 png or svg 
