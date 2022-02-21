@@ -76,6 +76,8 @@ deploy-job: # This job runs in the deployment stage. Deployment process can be a
   script:
     - echo "Deploying application..."
     - ls
+    - chmod +x ./gitlab-deploy-prod.sh
+    - . gitlab-deploy-prod.sh
     - bash .gitlab-deploy-prod.sh
     - echo "Application successfully deployed."
 
