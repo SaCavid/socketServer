@@ -63,23 +63,24 @@ lint-test-job: # This job also runs in the test stage.
 
 deploy-job:      # This job runs in the deployment stage. Deployment process can be automated.
   stage: deploy  # It only runs when all other jobs in the test stage complete successfully.
-  only: 
+  only:
     - main # Run only on main branch
 
-  before_script: 
+  before_script:
     #Generate ssh key
     - mkdir -p ~/.ssh
     - echo -e "$DEPLOY_SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
-    - chmod 600 ~/.ssh/id_rsa 
+    - chmod 600 ~/.ssh/id_rsa
     - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
 
   script:
     - echo "Deploying application..."
+    - ls
     - bash .gitlab-deploy-prod.sh
     - echo "Application successfully deployed."
 
-  environment: 
+  environment:
     name: stage
     url: https://www.url-example.com
 
-    
+
