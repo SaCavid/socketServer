@@ -10,5 +10,5 @@ array=(${string//,/ })
 #Iterate servers for deploy and pull new version
 for i in "${!array[@]}"; do
   echo "Deploy project on server" "${array[i]}"
-  ssh ec2-user@"${array[i]}" "ls && mkdir test"
+  ssh ec2-user@"${array[i]}" ". update.sh"
 done
