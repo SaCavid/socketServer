@@ -82,9 +82,9 @@ func tcpClient(host, addr, num string) {
 			countClients++
 			for {
 				// wait for reply
-				message, err := bufio.NewReader(conn).ReadString('\n')
+				_, err := bufio.NewReader(conn).ReadString('\n')
 				if err == nil {
-					fmt.Printf("ID: %s Message from server: %s", num, message)
+					// fmt.Printf("ID: %s Message from server: %s", num, message)
 				}
 			}
 		}
