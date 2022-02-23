@@ -4,7 +4,6 @@ import (
 	"github.com/joho/godotenv"
 	"log"
 	"net"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -29,17 +28,14 @@ func main() {
 	log.SetFlags(log.Lshortfile | log.Ldate | log.Ltime)
 	tcpHost := os.Getenv("TCP_HOST_NAME")
 	addr := os.Getenv("TCP_PORT")
-	fakeClients := os.Getenv("FAKE_CLIENTS")
 
 	addrs := strings.Split(addr, ",")
-
-	clients, _ := strconv.ParseInt(fakeClients, 10, 64)
-
+	var clients = 110000
 	wg := sync.WaitGroup{}
 	wg.Add(int(clients))
 	h := 0
 	i := 0
-	for int64(countClients) <= clients {
+	for countClients <= clients {
 
 		if i%10000 == 0 {
 			log.Println(i, addrs[h], countClients)
