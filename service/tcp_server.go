@@ -48,6 +48,7 @@ func (srv *Server) TCPServer(tcpHost, addr string) {
 		conn, err := l.Accept()
 		if err != nil {
 			log.Println(err)
+			continue
 		}
 
 		go srv.Receiver(conn)
