@@ -114,7 +114,7 @@ func (h *Hub) Run() {
 	for {
 		select {
 		case client := <-h.Register:
-			log.Println("Register new machine client in HUB")
+			// log.Println("Register new machine client in HUB")
 			h.rw.Lock()
 			_, ok := h.machines[client.ID]
 			if ok {

@@ -142,7 +142,7 @@ func (srv *Server) Receiver(conn net.Conn) {
 				}
 			}
 
-			log.Println("User logged")
+			// log.Println("User logged")
 		}
 
 		// receive messages and broadcast after login if its bot client
