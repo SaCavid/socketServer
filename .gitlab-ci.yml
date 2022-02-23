@@ -1,87 +1,87 @@
-stages: # List of stages for jobs, and their order of execution
-  - validate
-  - build
-  - test
-  - deploy
-
-before_script:
-  - VERSION=$(cat version)
-
-invalid_ref: # This job runs in validate stage, which runs first.
-  stage: validate
-  script:
-    - echo "Invalid ref name - $CI_COMMIT_REF_NAME"
-    - exit 1
-  rules:
-    - if: $CI_COMMIT_REF_NAME !~ /^release|development|master|main|new\/.+|fix\/.+|doc\/.+|infra\/.+|qa\/.+$/
-      when: always
-
-build-job: # This job runs in the build stage, which runs first.
-  image: golang:1.16-alpine
-  stage: build
-  script:
-    - echo "Compiling the code..."
-    - go mod download
-    - go build -o ./cmd/main ./cmd/main.go
-    - echo "Compile complete."
-    - echo $VERSION
-
-simple-test-job: # This job runs in the test stage.
-  image: golang
-  stage: test
-  script:
-    - echo "Compiling the code..."
-    - go mod download
-    - go get golang.org/x/tools/cmd/cover
-    - apt-get update
-    - apt-get install build-essential -y
-    - echo "Installed GCC."
-    - go test -cover ./...
-
-race-test-job: # This job runs in the test stage.
-  image: golang
-  stage: test
-  script:
-    - echo "Compiling the code..."
-    - go mod download
-    - apt-get update
-    - apt-get install build-essential -y
-    - echo "Installed GCC."
-    - go build -race -o ./cmd/main ./cmd/main.go
-
-lint-test-job: # This job also runs in the test stage.
-  image: golang:1.16-alpine
-  stage: test
-  script:
-    - echo "Compiling the code..."
-    - go mod download
-    - go build -o ./cmd/main ./cmd/main.go
-    - echo "Compile complete."
-    - go get -u golang.org/x/lint/golint
-    - chmod +x $GOPATH/bin/golint
-    - golint -set_exit_status ./...
-
-deploy-job: # This job runs in the deployment stage. Deployment process can be automated.
-  stage: deploy  # It only runs when all other jobs in the test stage complete successfully.
-  only:
-    - main # Run only on main branch
-
-  before_script:
-    #Generate ssh key
-    - mkdir -p ~/.ssh
-    - echo -e "$DEPLOY_SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
-    - chmod 600 ~/.ssh/id_rsa
-    - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
-
-  script:
-    - echo "Deploying application..."
-    - ls
-    - chmod +x ./gitlab-deploy-prod.sh
-    - . gitlab-deploy-prod.sh
-    - echo "Application successfully deployed."
-
-  environment:
-    name: stage
-    url: https://www.url-example.com
-
-
+#stages: # List of stages for jobs, and their order of execution
+#  - validate
+#  - build
+#  - test
+#  - deploy
+#
+#before_script:
+#  - VERSION=$(cat version)
+#
+#invalid_ref: # This job runs in validate stage, which runs first.
+#  stage: validate
+#  script:
+#    - echo "Invalid ref name - $CI_COMMIT_REF_NAME"
+#    - exit 1
+#  rules:
+#    - if: $CI_COMMIT_REF_NAME !~ /^release|development|master|main|new\/.+|fix\/.+|doc\/.+|infra\/.+|qa\/.+$/
+#      when: always
+#
+#build-job: # This job runs in the build stage, which runs first.
+#  image: golang:1.16-alpine
+#  stage: build
+#  script:
+#    - echo "Compiling the code..."
+#    - go mod download
+#    - go build -o ./cmd/main ./cmd/main.go
+#    - echo "Compile complete."
+#    - echo $VERSION
+#
+#simple-test-job: # This job runs in the test stage.
+#  image: golang
+#  stage: test
+#  script:
+#    - echo "Compiling the code..."
+#    - go mod download
+#    - go get golang.org/x/tools/cmd/cover
+#    - apt-get update
+#    - apt-get install build-essential -y
+#    - echo "Installed GCC."
+#    - go test -cover ./...
+#
+#race-test-job: # This job runs in the test stage.
+#  image: golang
+#  stage: test
+#  script:
+#    - echo "Compiling the code..."
+#    - go mod download
+#    - apt-get update
+#    - apt-get install build-essential -y
+#    - echo "Installed GCC."
+#    - go build -race -o ./cmd/main ./cmd/main.go
+#
+#lint-test-job: # This job also runs in the test stage.
+#  image: golang:1.16-alpine
+#  stage: test
+#  script:
+#    - echo "Compiling the code..."
+#    - go mod download
+#    - go build -o ./cmd/main ./cmd/main.go
+#    - echo "Compile complete."
+#    - go get -u golang.org/x/lint/golint
+#    - chmod +x $GOPATH/bin/golint
+#    - golint -set_exit_status ./...
+#
+#deploy-job: # This job runs in the deployment stage. Deployment process can be automated.
+#  stage: deploy  # It only runs when all other jobs in the test stage complete successfully.
+#  only:
+#    - main # Run only on main branch
+#
+#  before_script:
+#    #Generate ssh key
+#    - mkdir -p ~/.ssh
+#    - echo -e "$DEPLOY_SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+#    - chmod 600 ~/.ssh/id_rsa
+#    - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
+#
+#  script:
+#    - echo "Deploying application..."
+#    - ls
+#    - chmod +x ./gitlab-deploy-prod.sh
+#    - . gitlab-deploy-prod.sh
+#    - echo "Application successfully deployed."
+#
+#  environment:
+#    name: stage
+#    url: https://www.url-example.com
+#
+#

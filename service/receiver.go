@@ -63,9 +63,9 @@ func (srv *Server) Receiver(conn net.Conn) {
 		n, err := conn.Read(b)
 		if err != nil {
 			if err.Error() == "EOF" {
-				log.Println("Connection interrupted by client machine")
+				// log.Println("Connection interrupted by client machine")
 			} else {
-				log.Println(err)
+				// log.Println(err)
 			}
 
 			if !logged {
