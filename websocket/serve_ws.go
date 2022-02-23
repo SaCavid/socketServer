@@ -12,8 +12,6 @@ import (
 // ServeWs endpoint function which will serve websocket connections
 func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 
-	log.Println("Attempt to join websocket server")
-
 	// create pool unit for upgrading http to websocket connection
 	pool := pool{
 		w:  w,
@@ -47,7 +45,7 @@ func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	// after upgrade create client unit for inmemory database registration (HUB)
 	client := &Client{
 		ID:      fmt.Sprintf("%s", conn.RemoteAddr().String()),
-		hub:     hub,
+		Hub:     hub,
 		conn:    conn,
 		Send:    make(chan *models.Protocol, 10),
 		HubChan: make(chan bool, 1),
@@ -55,8 +53,10 @@ func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 
 	// log.Println("Admin user registered with ID:", conn.RemoteAddr())
 
+	//log.Println("Attempt to join websocket server")
+
 	// Send client unit to registration channel in HUB
-	client.hub.registerAdmin <- client
+	client.Hub.RegisterWs <- client
 
 	confirm := <-client.HubChan
 
@@ -65,11 +65,11 @@ func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		close(client.HubChan)
 	} else {
 		close(client.HubChan)
-		w.WriteHeader(http.StatusBadRequest)
+		close(client.Send)
+		_ = client.conn.Close()
 		return
 	}
 
 	// websocket workers
-	go client.writePump()
 	client.readPump()
 }

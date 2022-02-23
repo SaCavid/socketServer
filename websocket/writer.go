@@ -7,10 +7,14 @@ import (
 	"socketserver/models"
 )
 
-// writePump pumps messages from the hub to the websocket connection.
-func (c *Client) writePump() {
+// writePump pumps messages from the Hub to the websocket connection.
+func (c *Client) writePump(quit chan bool) {
 	defer func() {
 		log.Println("Stopped write pump")
+		c.Hub.UnRegisterWs <- c
+		close(quit)
+		close(c.Send)
+		_ = c.conn.Close()
 	}()
 
 	for {
@@ -46,7 +50,11 @@ func (c *Client) writePump() {
 			if err := w.Close(); err != nil {
 				return
 			}
-
+		case q := <-quit:
+			if q {
+				return
+			}
 		}
+
 	}
 }

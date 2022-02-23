@@ -8,14 +8,11 @@ import (
 	"os"
 	ws "socketserver/websocket"
 	"strings"
-	"sync"
 )
 
 // Server Main struct for controlling servers and etc
 type Server struct {
-	Port int
-	Mu   sync.Mutex
-	Hub  *ws.Hub
+	Hub *ws.Hub
 }
 
 // TCPServers - read environment and continue
@@ -33,6 +30,7 @@ func (srv *Server) TCPServers() {
 
 // TCPServer - Will start tcp server per port from environment
 func (srv *Server) TCPServer(tcpHost, addr string) {
+
 	l, err := net.Listen("tcp", fmt.Sprintf("%s:%s", tcpHost, addr))
 	if err != nil {
 		log.Fatal(err)

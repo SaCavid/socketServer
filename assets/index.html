@@ -120,12 +120,12 @@
                     let message = JSON.parse(e.data)
                     console.log(message)
                     if (message.Error) {
-                        log("error", message.Msg)
+                        log("error", message.Command)
                     } else {
                         if (message.ErrCode === 1) {
-                            log("info", message.Msg)
+                            log("info", message.Command)
                         } else {
-                            log("success", message.Msg)
+                            log("success", message.Command)
                         }
                     }
                 }

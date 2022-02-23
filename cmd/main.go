@@ -14,8 +14,6 @@ func init() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	handler.DisplayTitle()
 }
 
 func main() {

@@ -10,7 +10,7 @@ import (
 type Client struct {
 	ID string // Client unique id: remote address for unique connection
 
-	hub *Hub
+	Hub *Hub
 
 	// channel to confirm registration
 	HubChan chan bool

@@ -41,6 +41,7 @@ func (p *Protocol) Validate() error {
 	}
 
 	commands := []string{"CONSOLE", "REBOOT", "FORCEREBOOT", "SHUTDOWN", "SAFESHUTDOWN", "INSTANTOC", "SETFANS", "DOWNLOADWATTS", "RESTARTWATTS", "RESTART", "DIAG", "START", "NODERESTART", "RESTARTNODE", "STOP", "FLASH", "GETBIOS", "POWERCYCLE", "DIRECT"}
+
 	for _, v := range commands {
 		if p.Command == v {
 			return nil

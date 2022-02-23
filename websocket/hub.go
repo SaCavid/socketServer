@@ -39,20 +39,26 @@ type Hub struct {
 	// write locker
 	rw sync.RWMutex
 
-	// Registered admin users.
-	users map[string]*Client
+	// Registered admin Bots.
+	Bots map[string]*Client
 
 	// Registered machines.
 	machines map[string]*Client
 
 	// Inbound messages from the machines.
-	broadcast chan *models.Protocol
+	BroadcastChannel chan *models.Protocol
+
+	// Register requests from the websocket.
+	RegisterWs chan *Client
+
+	// Unregister requests from websocket.
+	UnRegisterWs chan *Client
 
 	// Register requests from the machines.
-	registerAdmin chan *Client
+	RegisterBot chan *Client
 
 	// Unregister requests from machines.
-	unregisterAdmin chan *Client
+	UnRegisterBot chan *Client
 
 	// Register requests from the machines.
 	Register chan *Client
@@ -78,14 +84,16 @@ func NewHub() *Hub {
 	}
 
 	return &Hub{
-		broadcast:       make(chan *models.Protocol, bc),
-		users:           make(map[string]*Client),
-		registerAdmin:   make(chan *Client),
-		unregisterAdmin: make(chan *Client),
-		machines:        make(map[string]*Client),
-		Register:        make(chan *Client),
-		Unregister:      make(chan *Client),
-		pool:            make(chan pool, wr),
+		BroadcastChannel: make(chan *models.Protocol, bc),
+		Bots:             make(map[string]*Client),
+		RegisterWs:       make(chan *Client),
+		UnRegisterWs:     make(chan *Client),
+		RegisterBot:      make(chan *Client),
+		UnRegisterBot:    make(chan *Client),
+		machines:         make(map[string]*Client),
+		Register:         make(chan *Client),
+		Unregister:       make(chan *Client),
+		pool:             make(chan pool, wr),
 	}
 }
 
@@ -102,126 +110,108 @@ func (h *Hub) Run() {
 		go h.Broadcast()
 	}
 
-	go h.Informer()
-
+	ticker := time.NewTicker(10 * time.Second)
 	for {
 		select {
 		case client := <-h.Register:
-			// log.Println("Register new machine client in HUB")
+			log.Println("Register new machine client in HUB")
 			h.rw.Lock()
 			_, ok := h.machines[client.ID]
 			if ok {
-				//	log.Println(fmt.Sprintf("Machine with id: %s already exists", client.ID))
+				// log.Println(fmt.Sprintf("Machine with id: %s already exists", client.ID))
 				client.HubChan <- false
 			} else {
+				// log.Println("Welcome new client")
 				h.machines[client.ID] = client
 				client.HubChan <- true
 			}
 			h.rw.Unlock()
 		case client := <-h.Unregister:
 			h.rw.RLock()
+			//machine, ok := h.machines[client.ID]
 			_, ok := h.machines[client.ID]
 			h.rw.RUnlock()
 			if ok {
-				//				log.Println("Unregister machine client")
+				// log.Println("Unregister machine client")
+				// check if registered and unregistering machine ip addresses aare same or not for safety
+				// if strings.Compare(client.TConn.RemoteAddr().String(), machine.TConn.RemoteAddr().String()) == 0 {
 				h.rw.Lock()
 				delete(h.machines, client.ID)
 				h.rw.Unlock()
+				//}
 			}
-		case client := <-h.registerAdmin:
-			log.Println("Register new Admin client")
+		case client := <-h.RegisterBot:
+			log.Println("Register new Bot client")
 			h.rw.Lock()
-			_, ok := h.users[client.ID]
+			_, ok := h.Bots[client.TConn.RemoteAddr().String()]
 			if ok {
 				client.HubChan <- false
 			} else {
-				h.users[client.ID] = client
+				h.Bots[client.TConn.RemoteAddr().String()] = client
 				client.HubChan <- true
 			}
 			h.rw.Unlock()
-		case client := <-h.unregisterAdmin:
-			log.Println("Unregister Admin client")
+		case client := <-h.UnRegisterBot:
+			log.Println("Unregister Bot client")
 			h.rw.RLock()
-			_, ok := h.users[client.ID]
+			_, ok := h.Bots[client.TConn.RemoteAddr().String()]
 			h.rw.RUnlock()
 			if ok {
 				h.rw.Lock()
-				delete(h.users, client.ID)
+				delete(h.Bots, client.TConn.RemoteAddr().String())
 				h.rw.Unlock()
-				close(client.Send)
 			}
+		case client := <-h.RegisterWs:
+			log.Println("Register new Ws client")
+			h.rw.Lock()
+			_, ok := h.Bots[client.conn.RemoteAddr().String()]
+			if ok {
+				client.HubChan <- false
+			} else {
+				h.Bots[client.conn.RemoteAddr().String()] = client
+				client.HubChan <- true
+			}
+			h.rw.Unlock()
+		case client := <-h.UnRegisterWs:
+			log.Println("Unregister Ws client")
+			h.rw.RLock()
+			_, ok := h.Bots[client.conn.RemoteAddr().String()]
+			h.rw.RUnlock()
+			if ok {
+				h.rw.Lock()
+				delete(h.Bots, client.conn.RemoteAddr().String())
+				h.rw.Unlock()
+			}
+		case <-ticker.C:
+			log.Println("Bot/Ws clients online:", len(h.Bots), "Machines online:", len(h.machines), "Routines:", runtime.NumGoroutine())
 		}
 	}
 }
 
 // Broadcast Message brokers
 func (h *Hub) Broadcast() {
-	// broadcasts message between connected clients (users --> machines)
+	// broadcasts message between connected clients (Bots --> machines)
 	for {
 		select {
-		case initializer := <-h.broadcast:
+		case initializer := <-h.BroadcastChannel:
 			h.rw.RLock()
 
 			machine, ok := h.machines[initializer.To]
 			if ok {
 				machine.Send <- initializer
-				initializer.Msg = fmt.Sprintf("Command to %s sent successfully", initializer.To)
-				initializer.AdminChan <- initializer
+
+				init := new(models.Protocol)
+				init.To = initializer.To
+				init.AdminChan = initializer.AdminChan
+				init.Command = "OK"
+				init.ErrCode = 1
+				init.AdminChan <- init
 			} else {
 				log.Println(fmt.Sprintf("Error: Client with ID: %s not found", initializer.To))
+				initializer.Command = fmt.Sprintf("Client with ID: %s not found", initializer.To)
 				initializer.Error = true
-				initializer.Msg = fmt.Sprintf("Client with ID: %s not found", initializer.To)
 				initializer.AdminChan <- initializer
 			}
-			h.rw.RUnlock()
-		}
-	}
-}
-
-// Informer Total count message broker
-func (h *Hub) Informer() {
-
-	informPeriod, err := strconv.ParseInt(os.Getenv("INFORM_PERIOD"), 10, 64)
-	if err != nil {
-		informPeriod = 60
-	}
-
-	// Send total info to all online admin users every .
-	informerPeriod := time.Duration(informPeriod) * time.Second
-
-	ticker := time.NewTicker(informerPeriod)
-	defer func() {
-		ticker.Stop()
-	}()
-
-	for {
-		select {
-		case <-ticker.C:
-			h.rw.RLock()
-			machines := len(h.machines)
-			log.Println(runtime.NumGoroutine())
-			for _, v := range h.users {
-
-				msg := fmt.Sprintf("There is %d machine online", machines)
-
-				if machines > 1 {
-					msg = fmt.Sprintf("There are %d machines online", machines)
-				}
-
-				err := v.conn.WriteJSON(&struct {
-					ErrCode int
-					Msg     string
-				}{
-					ErrCode: 1,
-					Msg:     msg,
-				})
-
-				if err != nil {
-					log.Println(err)
-					h.unregisterAdmin <- v
-				}
-			}
-
 			h.rw.RUnlock()
 		}
 	}

@@ -8,13 +8,15 @@ import (
 	"strconv"
 )
 
-// readPump pumps messages from the websocket connection to the hub.
+// readPump pumps messages from the websocket connection to the Hub.
 func (c *Client) readPump() {
+	quit := make(chan bool, 1)
 	defer func() {
+		quit <- true
 		log.Println("Stopped read pump")
-		c.hub.unregisterAdmin <- c
-		_ = c.conn.Close()
 	}()
+
+	go c.writePump(quit)
 
 	// Maximum message size allowed from peer/websocket.
 	maxSize := os.Getenv("MAX_WEBSOCKET_MESSAGE_SIZE")
@@ -49,9 +51,8 @@ func (c *Client) readPump() {
 				}
 			} else {
 				msg.AdminChan = c.Send
-				c.hub.broadcast <- msg
+				c.Hub.BroadcastChannel <- msg
 			}
 		}
-
 	}
 }
