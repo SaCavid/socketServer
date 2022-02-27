@@ -26,27 +26,27 @@ type Response struct {
 }
 
 // Validate checks protocol for valid information
-func (p *Protocol) Validate() error {
+func (p *Protocol) Validate() (Msg, error) {
 
 	if p.To == "" {
-		return fmt.Errorf("machine id cant be null")
+		return InvalidWorker, fmt.Errorf("machine id cant be null")
 	}
 
 	if len(p.To) > 30 {
-		return fmt.Errorf("invalid machine name")
+		return InvalidWorker, fmt.Errorf("invalid machine name")
 	}
 
 	if len(p.Command) == 0 || len(p.Command) > 30 {
-		return fmt.Errorf("wrong command format")
+		return MalformedCommand, fmt.Errorf("wrong command format")
 	}
 
 	commands := []string{"CONSOLE", "REBOOT", "FORCEREBOOT", "SHUTDOWN", "SAFESHUTDOWN", "INSTANTOC", "SETFANS", "DOWNLOADWATTS", "RESTARTWATTS", "RESTART", "DIAG", "START", "NODERESTART", "RESTARTNODE", "STOP", "FLASH", "GETBIOS", "POWERCYCLE", "DIRECT"}
 
 	for _, v := range commands {
 		if p.Command == v {
-			return nil
+			return Ok, nil
 		}
 	}
 
-	return fmt.Errorf("malformed command")
+	return MalformedCommand, fmt.Errorf("malformed command")
 }

@@ -26,7 +26,7 @@ func TestValidateLogin(t *testing.T) {
 	for k, v := range samples {
 		testName := fmt.Sprintf("%d,%s", k, v.Login)
 		t.Run(testName, func(t *testing.T) {
-			_, _, err := ValidateLogin([]byte(v.Login))
+			_, _, _, err := ValidateLogin([]byte(v.Login))
 			if err != nil && !v.B {
 				t.Errorf("%s", err.Error())
 			}

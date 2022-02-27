@@ -55,12 +55,6 @@ type Hub struct {
 	UnRegisterWs chan *Client
 
 	// Register requests from the machines.
-	RegisterBot chan *Client
-
-	// Unregister requests from machines.
-	UnRegisterBot chan *Client
-
-	// Register requests from the machines.
 	Register chan *Client
 
 	// Unregister requests from machines.
@@ -88,8 +82,6 @@ func NewHub() *Hub {
 		Bots:             make(map[string]*Client),
 		RegisterWs:       make(chan *Client),
 		UnRegisterWs:     make(chan *Client),
-		RegisterBot:      make(chan *Client),
-		UnRegisterBot:    make(chan *Client),
 		machines:         make(map[string]*Client),
 		Register:         make(chan *Client),
 		Unregister:       make(chan *Client),
@@ -110,7 +102,7 @@ func (h *Hub) Run() {
 		go h.Broadcast()
 	}
 
-	ticker := time.NewTicker(10 * time.Second)
+	ticker := time.NewTicker(3 * time.Second)
 	for {
 		select {
 		case client := <-h.Register:
@@ -139,27 +131,6 @@ func (h *Hub) Run() {
 				delete(h.machines, client.ID)
 				h.rw.Unlock()
 				//}
-			}
-		case client := <-h.RegisterBot:
-			log.Println("Register new Bot client")
-			h.rw.Lock()
-			_, ok := h.Bots[client.TConn.RemoteAddr().String()]
-			if ok {
-				client.HubChan <- false
-			} else {
-				h.Bots[client.TConn.RemoteAddr().String()] = client
-				client.HubChan <- true
-			}
-			h.rw.Unlock()
-		case client := <-h.UnRegisterBot:
-			log.Println("Unregister Bot client")
-			h.rw.RLock()
-			_, ok := h.Bots[client.TConn.RemoteAddr().String()]
-			h.rw.RUnlock()
-			if ok {
-				h.rw.Lock()
-				delete(h.Bots, client.TConn.RemoteAddr().String())
-				h.rw.Unlock()
 			}
 		case client := <-h.RegisterWs:
 			log.Println("Register new Ws client")
@@ -203,12 +174,12 @@ func (h *Hub) Broadcast() {
 				init := new(models.Protocol)
 				init.To = initializer.To
 				init.AdminChan = initializer.AdminChan
-				init.Command = "OK"
+				init.Command = models.Ok.String()
 				init.ErrCode = 1
 				init.AdminChan <- init
 			} else {
 				log.Println(fmt.Sprintf("Error: Client with ID: %s not found", initializer.To))
-				initializer.Command = fmt.Sprintf("Client with ID: %s not found", initializer.To)
+				initializer.Command = models.Failed.String()
 				initializer.Error = true
 				initializer.AdminChan <- initializer
 			}

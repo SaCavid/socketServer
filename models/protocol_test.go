@@ -40,7 +40,7 @@ func TestProtocol_Validate(t *testing.T) {
 	for _, v := range samples {
 		testName := fmt.Sprintf("%s,%s", v.To, v.Command)
 		t.Run(testName, func(t *testing.T) {
-			err := v.Validate()
+			_, err := v.Validate()
 			if err != nil && !v.B {
 				t.Errorf("%s", err.Error())
 			}

@@ -32,12 +32,6 @@ func Listen() {
 
 	r.HandleFunc("/", Index).Methods("GET")
 	r.HandleFunc("/ws", srv.Ws)
-	r.PathPrefix("/debug/").Handler(http.DefaultServeMux)
-	//r.Handle("/debug/pprof/", http.HandlerFunc(pprof.Index))
-	//r.Handle("/debug/pprof/cmdline", http.HandlerFunc(pprof.Cmdline))
-	//r.Handle("/debug/pprof/profile", http.HandlerFunc(pprof.Profile))
-	//r.Handle("/debug/pprof/symbol", http.HandlerFunc(pprof.Symbol))
-	//r.Handle("/debug/pprof/trace", http.HandlerFunc(pprof.Trace))
 
 	server := &http.Server{
 		Addr:         fmt.Sprintf("%s:%s", host, httpPort),
@@ -46,7 +40,9 @@ func Listen() {
 		WriteTimeout: 50 * time.Second,
 		IdleTimeout:  time.Second * 100,
 	}
-
+	/*
+	   FIXME Question: Are your machines after successful login need to send message to server ? - At the moment we have 2 goroutines for receive and for transmit of message. If your machines will not send anything at any way after login to server I can skip receive goroutine which will reduce recourses used by server for machines for 50%. In this case Server will be able to forward commands to machines only. On close of connection by server or client both server and I guess your machines will understand that connection is closed so we will not get error on server.
+	*/
 	log.Fatal(server.ListenAndServe())
 }
 

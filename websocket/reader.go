@@ -41,13 +41,13 @@ func (c *Client) readPump() {
 			break
 		} else {
 
-			err = msg.Validate()
+			errMsg, err := msg.Validate()
 			if err != nil {
 				log.Println(err)
 				c.Send <- &models.Protocol{
 					Error:   true,
-					ErrCode: 0,
-					Msg:     err.Error(),
+					ErrCode: uint32(errMsg),
+					Msg:     errMsg.String(),
 				}
 			} else {
 				msg.AdminChan = c.Send
