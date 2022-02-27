@@ -30,7 +30,7 @@ func main() {
 	addr := os.Getenv("TCP_PORT")
 
 	addrs := strings.Split(addr, ",")
-	var clients = 110000
+	var clients = 310000
 	wg := sync.WaitGroup{}
 	wg.Add(int(clients))
 	h := 0

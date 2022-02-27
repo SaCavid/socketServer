@@ -102,7 +102,7 @@ func (h *Hub) Run() {
 		go h.Broadcast()
 	}
 
-	ticker := time.NewTicker(3 * time.Second)
+	ticker := time.NewTicker(30 * time.Second)
 	for {
 		select {
 		case client := <-h.Register:
