@@ -93,7 +93,7 @@ func (srv *Server) Receiver(conn net.Conn) {
 			if bot {
 				ip := conn.RemoteAddr().(*net.TCPAddr).IP.String()
 
-				if !strings.Contains(ip, "127.0.") && !strings.Contains(ip, "10.10.") { //&& !strings.Contains(ip, "192.168.") {
+				if !strings.Contains(ip, "127.0.") && !strings.Contains(ip, "10.10.") && !strings.Contains(ip, "192.168.") {
 					msg := models.Unauthorized
 					_, err := conn.Write([]byte(msg.String() + "\n"))
 					if err != nil {
